@@ -1,0 +1,28 @@
+load "std/bool.noq"
+
+(A ⊕ B) ∧ ((A ∧ ¬B) ∨ B) {
+k_or | 0
+d_or | 0
+i_or | 0
+n_and | 0
+k_or | 0
+d_and | 0
+xor_reshape | all
+k_and | 0
+k_and | 3
+d_and | all
+a_and_0 | 0
+a_and_0 | 0
+k_and | 4
+k_and | 6
+a_and_1 | 2
+a_and_1 | 2
+k_and | 5
+id_and | all
+i_and | all
+k_and | 1
+l_and | all
+k_or | 2
+n_or | all
+xor_reshape |! 0
+}
