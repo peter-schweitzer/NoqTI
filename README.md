@@ -71,3 +71,12 @@ swap(pair(f(a), g(b))) {
   swap(pair(A, B)) = pair(B, A) | all
 }
 ```
+
+## TODO:
+
+Unary and binary OPs should be separated properly
+
+The Not Operator is the only unary operator at the moment.
+It is implemented in a very 'hacky' way.
+
+It would be nice to be able to add more unary operators in an easier and more sensible way.
