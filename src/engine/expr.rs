@@ -47,6 +47,10 @@ pub enum Op {
     Pow,
     Mod,
     Eql,
+    And,
+    Or,
+    Xor,
+    Not,
 }
 
 impl Op {
@@ -59,6 +63,10 @@ impl Op {
             TokenKind::Caret => Some(Op::Pow),
             TokenKind::Percent => Some(Op::Mod),
             TokenKind::EqualsEquals => Some(Op::Eql),
+            TokenKind::LogicalAnd => Some(Op::And),
+            TokenKind::LogicalOr => Some(Op::Or),
+            TokenKind::LogicalXor => Some(Op::Xor),
+            TokenKind::LogicalNot => Some(Op::Not),
             _ => None
         }
     }
@@ -70,10 +78,12 @@ impl Op {
             Add | Sub       => 1,
             Mul | Div | Mod => 2,
             Pow             => 3,
+            And | Or | Xor  => 4,
+            Not => 5, // unary expressions should have the highest precedence I guess :man_shrugging:
         }
     }
 
-    const MAX_PRECEDENCE: usize = 3;
+    const MAX_PRECEDENCE: usize = 4;
 }
 
 impl fmt::Display for Op {
@@ -86,6 +96,10 @@ impl fmt::Display for Op {
             Op::Div => write!(f, "/"),
             Op::Mod => write!(f, "%"),
             Op::Pow => write!(f, "^"),
+            Op::And => write!(f, "∧"),
+            Op::Or => write!(f, "∨"),
+            Op::Xor => write!(f, "⊕"),
+            Op::Not => write!(f, "¬"),
         }
     }
 }
@@ -95,7 +109,8 @@ pub enum Expr {
     Sym(Token),
     Var(Token),
     Fun(Box<Expr>, Vec<Expr>),
-    Op(Op, Box<Expr>, Box<Expr>),
+    UniOp(Op, Box<Expr>),
+    BinOp(Op, Box<Expr>, Box<Expr>),
 }
 
 impl Expr {
@@ -111,7 +126,11 @@ impl Expr {
                 *self = value.clone()
             }
 
-            Self::Op(_, lhs, rhs) => {
+            Self::UniOp(_, rhs) => {
+                rhs.substitute(bindings);
+            }
+
+            Self::BinOp(_, lhs, rhs) => {
                 lhs.substitute(bindings);
                 rhs.substitute(bindings);
             },
@@ -149,7 +168,8 @@ impl Expr {
             Self::Sym(_) => "a symbol",
             Self::Var(_) => "a variable",
             Self::Fun(_, _) => "a functor",
-            Self::Op(_, _, _) => "a binary operator",
+            Self::UniOp(_, _) => "a unary operator",
+            Self::BinOp(_, _, _) => "a binary operator",
         }
     }
 
@@ -175,7 +195,7 @@ impl Expr {
         Some(args)
     }
 
-    fn parse_primary(lexer: &mut Lexer, diag: &mut impl Diagnoster) -> Option<Self> {
+    fn parse_unary_operation_or_primary(lexer: &mut Lexer, diag: &mut impl Diagnoster) -> Option<Self> {
         let mut head = {
             let token = lexer.next_token();
             match token.kind {
@@ -190,6 +210,10 @@ impl Expr {
 
                 TokenKind::Ident => {
                     Self::parse_ident(token)
+                },
+
+                TokenKind::LogicalNot => {
+                    return Some(Self::UniOp(Op::Not, Box::new(Self::parse_unary_operation_or_primary(lexer, diag)?)));
                 },
 
                 _ => {
@@ -207,7 +231,7 @@ impl Expr {
 
     fn parse_binary_operator(lexer: &mut Lexer, current_precedence: usize, diag: &mut impl Diagnoster) -> Option<Self> {
         if current_precedence > Op::MAX_PRECEDENCE {
-            return Self::parse_primary(lexer, diag)
+            return Self::parse_unary_operation_or_primary(lexer, diag)
         }
 
         let mut result = Self::parse_binary_operator(lexer, current_precedence + 1, diag)?;
@@ -219,11 +243,17 @@ impl Expr {
 
             lexer.next_token();
 
-            result = Expr::Op(
-                op,
-                Box::new(result),
-                Box::new(Self::parse_binary_operator(lexer, current_precedence, diag)?)
-            );
+            result = match op {
+                Op::Not => Expr::UniOp(
+                    op,
+                    Box::new(Self::parse_binary_operator(lexer, current_precedence, diag)?),
+                ),
+                _ => Expr::BinOp(
+                    op,
+                    Box::new(result),
+                    Box::new(Self::parse_binary_operator(lexer, current_precedence, diag)?)
+                ),
+            };
         }
 
         Some(result)
@@ -250,7 +280,10 @@ impl Expr {
                         true
                     }
                 }
-                (Op(op1, lhs1, rhs1), Op(op2, lhs2, rhs2)) => {
+                (UniOp(op1, rhs1), UniOp(op2, rhs2)) => {
+                    *op1 == *op2 && pattern_match_impl(rhs1, rhs2, bindings)
+                }
+                (BinOp(op1, lhs1, rhs1), BinOp(op2, lhs2, rhs2)) => {
                     *op1 == *op2 && pattern_match_impl(lhs1, lhs2, bindings) && pattern_match_impl(rhs1, rhs2, bindings)
                 }
                 (Fun(name1, args1), Fun(name2, args2)) => {
@@ -295,9 +328,26 @@ impl fmt::Display for Expr {
                 }
                 write!(f, ")")
             },
-            Expr::Op(op, lhs, rhs) => {
+            Expr::UniOp(op, rhs) => {
+                if op.precedence() <= 1 {
+                    write!(f, " {} ", op)?;
+                } else {
+                    write!(f, "{}", op)?;
+                }
+                match **rhs {
+                    Expr::UniOp(sub_op, _) | Expr::BinOp(sub_op, _, _) => {
+                        if sub_op.precedence() <= op.precedence() {
+                            write!(f, "({})", rhs)
+                        } else {
+                            write!(f, "{}", rhs)
+                        }
+                    }
+                    _ => write!(f, "{}", rhs)
+                }
+            }
+            Expr::BinOp(op, lhs, rhs) => {
                 match **lhs {
-                    Expr::Op(sub_op, _, _) => if sub_op.precedence() <= op.precedence() {
+                    Expr::UniOp(sub_op, _) | Expr::BinOp(sub_op, _, _) => if sub_op.precedence() <= op.precedence() {
                         write!(f, "({})", lhs)?
                     } else {
                         write!(f, "{}", lhs)?
@@ -310,10 +360,12 @@ impl fmt::Display for Expr {
                     write!(f, "{}", op)?;
                 }
                 match **rhs {
-                    Expr::Op(sub_op, _, _) => if sub_op.precedence() <= op.precedence() {
-                        write!(f, "({})", rhs)
-                    } else {
-                        write!(f, "{}", rhs)
+                    Expr::UniOp(sub_op, _) | Expr::BinOp(sub_op, _, _) => {
+                        if sub_op.precedence() <= op.precedence() {
+                            write!(f, "({})", rhs)
+                        } else {
+                            write!(f, "{}", rhs)
+                        }
                     }
                     _ => write!(f, "{}", rhs)
                 }
@@ -338,7 +390,12 @@ pub fn matches_at_least_one<'a>(pattern: &'a Expr, expr: &'a Expr) -> bool {
                 }
             }
         }
-        Expr::Op(_, lhs, rhs) => {
+        Expr::UniOp(_, rhs) => {
+            if matches_at_least_one(pattern, rhs) {
+                return true;
+            }
+        }
+        Expr::BinOp(_, lhs, rhs) => {
             if matches_at_least_one(pattern, lhs) {
                 return true;
             }
@@ -366,7 +423,10 @@ pub fn find_all_subexprs<'a>(pattern: &'a Expr, expr: &'a Expr) -> Vec<&'a Expr>
                     find_all_subexprs_impl(pattern, arg, subexprs);
                 }
             }
-            Expr::Op(_, lhs, rhs) => {
+            Expr::UniOp(_, rhs) => {
+                find_all_subexprs_impl(pattern, rhs, subexprs);
+            }
+            Expr::BinOp(_, lhs, rhs) => {
                 find_all_subexprs_impl(pattern, lhs, subexprs);
                 find_all_subexprs_impl(pattern, rhs, subexprs);
             }

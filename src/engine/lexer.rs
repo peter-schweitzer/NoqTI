@@ -62,6 +62,12 @@ pub enum TokenKind {
     Percent,
     EqualsEquals,
 
+    // Boolean Algebra
+    LogicalNot,
+    LogicalAnd,
+    LogicalOr,
+    LogicalXor,
+
     // Terminators
     Invalid,
     UnclosedStr,
@@ -115,6 +121,10 @@ impl fmt::Display for TokenKind {
             Asterisk => write!(f, "asterisk"),
             Slash => write!(f, "slash"),
             Caret => write!(f, "caret"),
+            LogicalNot => write!(f, "not"),
+            LogicalAnd => write!(f, "and"),
+            LogicalOr => write!(f, "or"),
+            LogicalXor => write!(f, "xor"),
             Bar => write!(f, "bar"),
             Bang => write!(f, "bang"),
             End => write!(f, "end of input"),
@@ -317,6 +327,10 @@ impl Lexer {
                         }
                         '^' => Token {kind: TokenKind::Caret,      text, loc},
                         '%' => Token {kind: TokenKind::Percent,    text, loc},
+                        '¬' => Token {kind: TokenKind::LogicalNot, text, loc},
+                        '∧' => Token {kind: TokenKind::LogicalAnd, text, loc},
+                        '∨' => Token {kind: TokenKind::LogicalOr,  text, loc},
+                        '⊕' => Token {kind: TokenKind::LogicalXor, text, loc},
                         '{' => Token {kind: TokenKind::OpenCurly,  text, loc},
                         '}' => Token {kind: TokenKind::CloseCurly, text, loc},
                         '|' => Token {kind: TokenKind::Bar,        text, loc},

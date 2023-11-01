@@ -144,9 +144,24 @@ impl<'a> fmt::Display for HighlightedSubexpr<'a> {
                     }
                     write!(f, ")")
                 },
-                Expr::Op(op, lhs, rhs) => {
+                Expr::UniOp(op, rhs) => {
+                    if op.precedence() <= 1 {
+                        write!(f, " {} ", op)?;
+                    } else {
+                        write!(f, "{}", op)?;
+                    }
+                    match **rhs {
+                        Expr::UniOp(sub_op, _) | Expr::BinOp(sub_op, _, _) => if sub_op.precedence() <= op.precedence() {
+                            write!(f, "({})", HighlightedSubexpr{expr: rhs, subexpr})
+                        } else {
+                            write!(f, "{}", HighlightedSubexpr{expr: rhs, subexpr})
+                        }
+                        _ => write!(f, "{}", HighlightedSubexpr{expr: rhs, subexpr})
+                    }
+                },
+                Expr::BinOp(op, lhs, rhs) => {
                     match **lhs {
-                        Expr::Op(sub_op, _, _) => if sub_op.precedence() <= op.precedence() {
+                        Expr::UniOp(sub_op, _) | Expr::BinOp(sub_op, _, _) => if sub_op.precedence() <= op.precedence() {
                             write!(f, "({})", HighlightedSubexpr{expr: lhs, subexpr})?
                         } else {
                             write!(f, "{}", HighlightedSubexpr{expr: lhs, subexpr})?
@@ -159,7 +174,7 @@ impl<'a> fmt::Display for HighlightedSubexpr<'a> {
                         write!(f, "{}", op)?;
                     }
                     match **rhs {
-                        Expr::Op(sub_op, _, _) => if sub_op.precedence() <= op.precedence() {
+                        Expr::UniOp(sub_op, _) | Expr::BinOp(sub_op, _, _) => if sub_op.precedence() <= op.precedence() {
                             write!(f, "({})", HighlightedSubexpr{expr: rhs, subexpr})
                         } else {
                             write!(f, "{}", HighlightedSubexpr{expr: rhs, subexpr})
