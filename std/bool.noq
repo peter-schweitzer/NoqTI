@@ -1,0 +1,58 @@
+//Boolean AlgeBRUH
+
+not_0 :: ¬0 = 1
+not_1 :: ¬1 = 0
+
+
+and_00 :: 0 ∧ 0 = 0
+and_01 :: 0 ∧ 1 = 0
+and_10 :: 1 ∧ 0 = 0
+and_11 :: 1 ∧ 1 = 1
+
+
+or_00 :: 0 ∨ 0 = 0
+or_01 :: 0 ∨ 1 = 1
+or_10 :: 1 ∨ 0 = 1
+or_11 :: 1 ∨ 1 = 1
+
+xor_reshape :: A ⊕ B = ((A ∧ ¬B) ∨ (¬A ∧ B))
+
+xor_00 :: 0 ⊕ 0 = 0
+xor_01 :: 0 ⊕ 1 = 1
+xor_10 :: 1 ⊕ 0 = 1
+xor_11 :: 1 ⊕ 1 = 0
+
+
+k_and :: A ∧ B = B ∧ A
+k_or ::  A ∨ B = B ∨ A
+
+d_and :: A ∧ (B ∨ C) = (A ∧ B) ∨ (A ∧ C)
+d_or :: A ∨ (B ∧ C) = (A ∨ B) ∧ (A ∨ C)
+
+n_and :: A ∧ 1 = A
+n_or :: A ∨ 0 = A
+
+i_and :: A ∧ ¬A = 0
+i_or :: A ∨ ¬A = 1
+
+a_and_0 :: A ∧ (B ∧ C) = (A ∧ B) ∧ C
+a_and_1 :: (A ∧ B) ∧ C = A ∧ B ∧ C
+a_and_2 :: A ∧ (B ∧ C) = A ∧ B ∧ C
+
+a_or_0 :: A ∨ (B ∨ C) = (A ∨ B) ∨ C
+a_or_1 :: (A ∨ B) ∨ C = A ∨ B ∨ C
+a_or_2 :: A ∨ (B ∨ C) = A ∨ B ∨ C
+
+id_and :: A ∧ A = A
+id_or :: A ∨ A = A
+
+ab_and :: A ∧ (A ∨ B) = A
+ab_or :: A ∨ (A ∧ B) = A
+
+m_and :: ¬(A ∧ B) = (¬A ∨ ¬B)
+m_or :: ¬(A ∨ B) = (¬A ∧ ¬B)
+
+l_and :: A ∧ 0 = 0
+l_or :: A ∨ 1 = 1
+
+dn :: ¬¬A = A
